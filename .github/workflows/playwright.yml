@@ -1,0 +1,52 @@
+name: Testes Playwright
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 10 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: train-body-360-e2e
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Navegação e responsividade
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Executar testes
+        run: npm test
+        env:
+          APP_URL: https://designs.magicpath.ai/v1/calm-gulf-9032
+
+      - name: Publicar relatório e evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-playwright
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

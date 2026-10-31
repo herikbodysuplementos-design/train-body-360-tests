@@ -23,13 +23,16 @@ async function openApp(page: Page) {
   });
 }
 
-async function enterDemo(page: Page) {
-  await openApp(page);
-
+async function disableCheckinPrompt(page: Page) {
   await page.evaluate(() => {
     localStorage.setItem('tb360_checkin_prompt_off', '1');
   });
   await page.reload();
+}
+
+async function enterDemo(page: Page) {
+  await openApp(page);
+  await disableCheckinPrompt(page);
 
   const demoButton = page.getByRole('button', {
     name: /explorar dashboard demonstrativo/i,
@@ -37,6 +40,25 @@ async function enterDemo(page: Page) {
 
   await expect(demoButton).toBeVisible({ timeout: 30_000 });
   await demoButton.click();
+
+  await expect(page.getByText('Início', { exact: true }).last()).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+async function enterSimulatedLogin(page: Page) {
+  await openApp(page);
+  await disableCheckinPrompt(page);
+
+  const email = page.getByLabel('E-mail');
+  await expect(email).toBeVisible();
+  await email.fill('teste-automatizado@trainbody360.local');
+
+  const enterButton = page.getByRole('button', {
+    name: /^entrar \(simulação\)$/i,
+  });
+  await expect(enterButton).toBeVisible();
+  await enterButton.click();
 
   await expect(page.getByText('Início', { exact: true }).last()).toBeVisible({
     timeout: 15_000,
@@ -84,8 +106,8 @@ test('permite navegar pelas seis áreas sem quebrar a aplicação', async ({
   expect(runtimeErrors).toEqual([]);
 });
 
-test('mantém a sessão local após atualizar a página', async ({ page }) => {
-  await enterDemo(page);
+test('mantém a sessão simulada após atualizar a página', async ({ page }) => {
+  await enterSimulatedLogin(page);
   await page.reload();
 
   await expect(page.getByText('Início', { exact: true }).last()).toBeVisible({

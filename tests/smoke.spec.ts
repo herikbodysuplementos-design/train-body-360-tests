@@ -1,5 +1,12 @@
 import { expect, Page, test } from '@playwright/test';
 
+const appUrl =
+  process.env.APP_URL ??
+  'https://designs.magicpath.ai/v1/calm-gulf-9032';
+
+const embeddedUrl =
+  appUrl + (appUrl.includes('?') ? '&embed=true' : '?embed=true');
+
 const navigationLabels = [
   'Início',
   'Meu Treino',
@@ -9,26 +16,27 @@ const navigationLabels = [
   'Mais',
 ];
 
+async function openApp(page: Page) {
+  await page.goto(embeddedUrl);
+  await expect(page.getByText('TRAIN BODY', { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
 async function enterDemo(page: Page) {
-  await page.goto('/');
-  await expect(page.locator('body')).toBeVisible();
+  await openApp(page);
+
+  await page.evaluate(() => {
+    localStorage.setItem('tb360_checkin_prompt_off', '1');
+  });
+  await page.reload();
 
   const demoButton = page.getByRole('button', {
-    name: /modo demonstração/i,
+    name: /explorar dashboard demonstrativo/i,
   });
 
-  if (await demoButton.isVisible().catch(() => false)) {
-    await demoButton.click();
-  } else {
-    const email = page.locator('input[type="email"]').first();
-    if (await email.isVisible().catch(() => false)) {
-      await email.fill('teste-automatizado@trainbody360.local');
-    }
-
-    const enterButton = page.getByRole('button', { name: /entrar/i }).first();
-    await expect(enterButton).toBeVisible();
-    await enterButton.click();
-  }
+  await expect(demoButton).toBeVisible({ timeout: 30_000 });
+  await demoButton.click();
 
   await expect(page.getByText('Início', { exact: true }).last()).toBeVisible({
     timeout: 15_000,
@@ -39,8 +47,7 @@ test('carrega sem erro crítico e sem rolagem horizontal', async ({ page }) => {
   const runtimeErrors: string[] = [];
   page.on('pageerror', error => runtimeErrors.push(error.message));
 
-  await page.goto('/');
-  await expect(page.locator('body')).toBeVisible();
+  await openApp(page);
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth + 2,
